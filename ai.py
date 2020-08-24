@@ -1,4 +1,5 @@
 import random
+import math
 
 class TicTacToe:
 	def __init__(self):
@@ -22,6 +23,11 @@ class TicTacToe:
 				row_string += "|"
 			row_string += "\n-------\n"
 		return row_string
+
+	def state(self):
+		player_one = [move for i, move in enumerate(self.moves) if i % 2 == 0]
+		player_two = [move for i, move in enumerate(self.moves) if i % 2 == 1]
+		return ["O" if i in player_one else ("X" if i in player_two else None) for i in range(0,9)]
 
 	def undo(self):
 		self.moves.pop()
@@ -61,15 +67,35 @@ class TicTacToe:
 				return 1
 		return 0
 
+def heusomething_value(game):
+	N = visits.get("total", 1)
+	Ni = visits.get(hash(tuple(game.state())), 1e-5)
+	V = differential.get(hash(tuple(game.state())), 0) * 1.0 / Ni
+	return V + 0.3 * math.sqrt(math.log(N) / Ni)
+
+def record(game, score):
+	visits["total"] = visits.get("total", 1) + 1
+	visits[hash(tuple(game.state()))] = visits.get(hash(tuple(game.state())), 0) + 1
+	differential[hash(tuple(game.state()))] = differential.get(hash(tuple(game.state())), 0) + score
+
 def simulate(game):
 	if game.over():
-		return game.score()
-	move = random.choice(game.valid_moves())
+		record(game, -game.score())
+		return -game.score()
+
+	action_heusomething = {}
+	for move in game.valid_moves():
+		game.move(move)
+		action_heusomething[move] = -heusomething_value(game)
+		game.undo()
+
+	move = max(action_heusomething, key=action_heusomething.get)
 	game.move(move)
 	score = -simulate(game)
 	game.undo()
+	record(game, score)
 
-	return score
+	return -score
 
 def replay_score(game, N=100):
 	scores = [simulate(game) for i in range(0, N)]
@@ -83,14 +109,29 @@ def ai_move(game):
 		game.undo()
 	return max(actions, key=actions.get)
 
-game = TicTacToe()
-while not game.over():
+visits = {}
+differential = {}
+
+for _ in range(0, 100):
+	game = TicTacToe()
+	while not game.over():
+		print(game)
+		move = random.choice(game.valid_moves())
+		if game.move(move) and not game.over():
+			move2 = ai_move(game)
+			game.move(move2)
 	print(game)
-	move = int(input("Give number: "))
-	if game.move(move) and not game.over():
-		move2 = ai_move(game)
-		game.move(move2)
-print(game)
+
+while True:
+	game = TicTacToe()
+	while not game.over():
+		print(game)
+		move = int(input("Give number: "))
+		if game.move(move) and not game.over():
+			move2 = ai_move(game)
+			game.move(move2)
+	print(game)
+	breakpoint()
 
 # hash(frozenset({"asd": "qwe"}.items()))
 
