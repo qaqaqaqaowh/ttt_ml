@@ -1,6 +1,9 @@
 import random
 import math
 import threading
+import pickle
+import signal
+import sys
 
 class TicTacToe:
 	def __init__(self):
@@ -107,9 +110,8 @@ class AI_UCT():
 		self.visits[str(game.state())] = self.visits.get(str(game.state()), 0) + 1
 		self.differential[str(game.state())] = self.differential.get(str(game.state()), 0) + score
 
-	def simulate(self, game, steps=math.inf):
+	def simulate(self, game, steps=4):
 		if steps == 0 or game.over():
-			self.record(game, -game.score())
 			return -game.score()
 
 		action_heusomething = {}
@@ -135,65 +137,83 @@ class AI_UCT():
 		actions = {}
 		for move in game.valid_moves():
 			game.move(move)
-			actions[move] = -self.replay_score(game)
+			if game.over():
+				actions[move] = math.inf
+			else:
+				actions[move] = -self.replay_score(game)
 			game.undo()
 		return max(actions, key=actions.get)
 
-wins = {"one": 0, "two": 0}
+if __name__ == "__main__":
 
-ai1 = AI_ALGO()
-ai2 = AI_UCT()
+	wins = {"one": 0, "two": 0}
 
-def one_game(first, second):
-	for i in range(0, 1000):
+	ai2 = AI_UCT()
+	try:
+		file = open("agent.pkl", "rb+")
+		ai1 = pickle.load(file)
+		ai2.visits = ai1.visits
+		ai2.differential = ai1.differential
+	except FileNotFoundError:
+		ai1 = AI_UCT()
+	
+# 	def stop(sig, frame):
+# 		print("Saving agent...")
+# 		file = open("agent.pkl", "wb+")
+# 		pickle.dump(ai2, file, pickle.HIGHEST_PROTOCOL)
+# 		sys.exit(0)
+
+# 	signal.signal(signal.SIGINT, stop)
+
+# 	def one_game(first, second):
+# 		for i in range(0, 1000):
+# 			game = TicTacToe()
+# 			while not game.over():
+# 				print(game)
+# 				move = first.ai_move(game)
+# 				# move = random.choice(game.valid_moves())
+# 				if game.move(move) and not game.over():
+# 					move2 = second.ai_move(game)
+# 					game.move(move2)
+# 			if game.score() > 0:
+# 				if len(game.moves) % 2 == 0:
+# 					wins["two"] += 1
+# 				else:
+# 					wins["one"] += 1
+# 			print(f"""
+# {game}\n
+# Player one: {wins['one']}
+# Player two: {wins['two']}
+# 		""")
+	
+# 	while True:
+# 		one_game(ai1, ai2)
+# 		one_game(ai2, ai1)
+
+	# threads = []
+
+	# for i in range(0, 100):
+	# 	first = ai1 if i % 2 == 0 else ai2
+	# 	second = ai2 if i % 2 == 0 else ai1
+	# 	t = threading.Thread(target=one_game,args=(first, second))
+	# 	threads += [t]
+	# 	t.start()
+
+	# print("Started all threads, joining...")
+
+	# for t in threads:
+	# 	t.join()
+
+	while True:
 		game = TicTacToe()
 		while not game.over():
 			print(game)
-			move = first.ai_move(game)
-			# move = random.choice(game.valid_moves())
+			move = int(input("Give number: "))
 			if game.move(move) and not game.over():
-				move2 = second.ai_move(game)
+				move2 = ai2.ai_move(game)
 				game.move(move2)
-		second.replay_score(game)
-		if game.score() == 1:
-			if len(game.moves) % 2 == 0:
-				wins["two"] += 1
-			else:
-				wins["one"] += 1
-		print(f"""
-{game}\n
-Player one: {wins['one']}
-Player two: {wins['two']}
-	""")
-
-one_game(ai1, ai2)
-one_game(ai2, ai1)
-
-# threads = []
-
-# for i in range(0, 100):
-# 	first = ai1 if i % 2 == 0 else ai2
-# 	second = ai2 if i % 2 == 0 else ai1
-# 	t = threading.Thread(target=one_game,args=(first, second))
-# 	threads += [t]
-# 	t.start()
-
-# print("Started all threads, joining...")
-
-# for t in threads:
-# 	t.join()
-
-while True:
-	game = TicTacToe()
-	while not game.over():
 		print(game)
-		move = int(input("Give number: "))
-		if game.move(move) and not game.over():
-			move2 = ai2.ai_move(game)
-			game.move(move2)
-	ai2.replay_score(game)
-	print(game)
-	breakpoint()
+		# breakpoint()
 
-# hash(frozenset({"asd": "qwe"}.items()))
+	# hash(frozenset({"asd": "qwe"}.items()))
 
