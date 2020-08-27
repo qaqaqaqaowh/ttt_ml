@@ -68,7 +68,30 @@ class TicTacToe:
 				return 1
 		return 0
 
-class AI():
+class AI_ALGO():
+	def simulate(self, game):
+		if game.over():
+			return game.score()
+		move = random.choice(game.valid_moves())
+		game.move(move)
+		score = -self.simulate(game)
+		game.undo()
+
+		return score
+
+	def replay_score(self, game, N=100):
+		scores = [self.simulate(game) for i in range(0, N)]
+		return sum(scores) / len(scores)
+
+	def ai_move(self, game):
+		actions = {}
+		for move in game.valid_moves():
+			game.move(move)
+			actions[move] = self.replay_score(game)
+			game.undo()
+		return max(actions, key=actions.get)
+
+class AI_UCT():
 	def __init__(self):
 		self.visits = {}
 		self.differential = {}
@@ -77,7 +100,7 @@ class AI():
 		N = self.visits.get("total", 1)
 		Ni = self.visits.get(str(game.state()), 1e-5)
 		V = self.differential.get(str(game.state()), 0) * 1.0 / Ni
-		return V + 100 * math.sqrt(math.log(N) / Ni)
+		return V + 1.5 * math.sqrt(math.log(N) / Ni)
 
 	def record(self, game, score):
 		self.visits["total"] = self.visits.get("total", 1) + 1
@@ -92,7 +115,7 @@ class AI():
 		action_heusomething = {}
 		for move in game.valid_moves():
 			game.move(move)
-			action_heusomething[move] = -self.heusomething_value(game)
+			action_heusomething[move] = self.heusomething_value(game)
 			game.undo()
 
 		move = max(action_heusomething, key=action_heusomething.get)
@@ -103,9 +126,10 @@ class AI():
 
 		return score
 
-	def replay_score(self, game, N=100):
-		scores = [self.simulate(game) for i in range(0, N)]
-		return sum(scores) / len(scores)
+	def replay_score(self, game, N=250):
+		for i in range(0, N):
+			self.simulate(game)
+		return self.differential[str(game.state())] * 1.0 / self.visits[str(game.state())]
 
 	def ai_move(self, game):
 		actions = {}
@@ -117,19 +141,20 @@ class AI():
 
 wins = {"one": 0, "two": 0}
 
-ai1 = AI()
-ai2 = AI()
+ai1 = AI_ALGO()
+ai2 = AI_UCT()
 
 def one_game(first, second):
-	for i in range(0, 5):
+	for i in range(0, 1000):
 		game = TicTacToe()
 		while not game.over():
-			# print(game)
+			print(game)
 			move = first.ai_move(game)
 			# move = random.choice(game.valid_moves())
 			if game.move(move) and not game.over():
 				move2 = second.ai_move(game)
 				game.move(move2)
+		second.replay_score(game)
 		if game.score() == 1:
 			if len(game.moves) % 2 == 0:
 				wins["two"] += 1
@@ -142,6 +167,7 @@ Player two: {wins['two']}
 	""")
 
 one_game(ai1, ai2)
+one_game(ai2, ai1)
 
 # threads = []
 
@@ -165,8 +191,9 @@ while True:
 		if game.move(move) and not game.over():
 			move2 = ai2.ai_move(game)
 			game.move(move2)
+	ai2.replay_score(game)
 	print(game)
-	# breakpoint()
+	breakpoint()
 
 # hash(frozenset({"asd": "qwe"}.items()))
 
